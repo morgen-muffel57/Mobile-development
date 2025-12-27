@@ -1,12 +1,10 @@
-// Задача: карта + long press + onMapReady.
-// Событие добавления маркера передаём пропсом onAddMarker(lat, lng).
-
 import React from "react";
 import { StyleSheet } from "react-native";
 import MapView, { Region } from "react-native-maps";
 import { MarkerData } from "../types";
 import MarkerList from "./MarkerList";
 
+// описываем входные данные компонента Map
 type Props = {
   markers: MarkerData[];
   initialRegion: Region;
@@ -14,6 +12,7 @@ type Props = {
 };
 
 export default function Map({ markers, initialRegion, onAddMarker }: Props) {
+  // обработчик долгого нажатия на карту
   const handleLongPress = (event: any) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
     onAddMarker(latitude, longitude);

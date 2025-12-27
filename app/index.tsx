@@ -6,11 +6,14 @@ import { useMarkers } from "../context/MarkerContext";
 import { MarkerData } from "../types";
 
 export default function MapScreen() {
+  // получаем данные из контекста с помощью хука useMarkers
   const { markers, addMarker } = useMarkers();
 
+  // функция добавления маркера
   const handleAddMarker = (latitude: number, longitude: number) => {
     const nextNumber = markers.length + 1;
 
+    // создаём объект новго маркера
     const newMarker: MarkerData = {
       id: Date.now().toString(),
       latitude,
@@ -20,6 +23,7 @@ export default function MapScreen() {
       images: [],
     };
 
+    // добавляем маркер в контекст
     addMarker(newMarker);
     Alert.alert("Метка добавлена");
   };

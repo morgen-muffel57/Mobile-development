@@ -1,10 +1,9 @@
-// Задача: сетка фото 3 колонки, пустое состояние, кнопка удаления фото.
-// Пусть экран [id].tsx передаёт images и onDelete.
 import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { ImageData } from "../types";
 
+// описываем входные данные компонента ImageList
 type Props = {
   images: ImageData[];
   onDelete: (photoId: string) => void;

@@ -1,6 +1,3 @@
-//Задача: рисует маркеры и обрабатывает переход по облачку.
-//Вынеси туда весь markers.map(...) из index.tsx.
-
 import { FontAwesome5 } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React from "react";
@@ -8,6 +5,7 @@ import { StyleSheet, View } from "react-native";
 import { Marker } from "react-native-maps";
 import { MarkerData } from "../types";
 
+// описываем входные данные компонента MarkerList
 type Props = {
   markers: MarkerData[];
 };
@@ -15,6 +13,7 @@ type Props = {
 export default function MarkerList({ markers }: Props) {
   const router = useRouter();
 
+  // проходим по массиву маркеров и отрисовывкем их
   return (
     <>
       {markers.map((marker) => (

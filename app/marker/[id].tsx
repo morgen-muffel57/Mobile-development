@@ -14,8 +14,10 @@ import { useMarkers } from "../../context/MarkerContext";
 import { ImageData } from "../../types";
 
 export default function MarkerDetailsScreen() {
+  // получаем id с помощью useLocalSearchParams - хук для чтения параметров из URL
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  // берём данные из контекста
   const { markers, deleteMarker, addPhotoToMarker, deletePhotoFromMarker } =
     useMarkers();
 
@@ -23,10 +25,12 @@ export default function MarkerDetailsScreen() {
 
   const [busy, setBusy] = React.useState(false);
 
+  // функция выбора изображения pickImage
   const pickImage = async () => {
     if (busy) return;
     setBusy(true);
     try {
+      // разрешение на доступ к галерее
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         Alert.alert(
@@ -36,6 +40,7 @@ export default function MarkerDetailsScreen() {
         return;
       }
 
+      // открытие галереи
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -48,7 +53,7 @@ export default function MarkerDetailsScreen() {
         Alert.alert("Ошибка", "Не удалось получить изображение.");
         return;
       }
-
+      // если всё хорошо, создаём фото
       if (!result.canceled && marker) {
         const newPhoto: ImageData = {
           id: Date.now().toString(),
@@ -64,6 +69,7 @@ export default function MarkerDetailsScreen() {
     }
   };
 
+  // функция удаления маркера
   const handleDeleteMarker = () => {
     Alert.alert("Удаление", "Удалить эту метку и все её фото?", [
       { text: "Отмена", style: "cancel" },
@@ -78,6 +84,7 @@ export default function MarkerDetailsScreen() {
     ]);
   };
 
+  // функция удаления фото в маркере
   const handleDeletePhoto = (photoId: string) => {
     if (!marker) return;
     Alert.alert("Удалить фото?", "Это действие нельзя отменить.", [
@@ -109,7 +116,7 @@ export default function MarkerDetailsScreen() {
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* Верхняя большая карточка */}
+      {/* верхняя основная карточка */}
       <View style={styles.topCard}>
         <View style={styles.topRow}>
           <Text style={styles.markerTitle}>{marker.title}</Text>
@@ -122,7 +129,7 @@ export default function MarkerDetailsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Карточка координат */}
+        {/* карточка координат */}
         <View style={styles.coordsCard}>
           <Text style={styles.coordsLabel}>Координаты</Text>
           <Text style={styles.coordsValue}>{marker.latitude.toFixed(7)}</Text>
@@ -130,7 +137,7 @@ export default function MarkerDetailsScreen() {
         </View>
       </View>
 
-      {/* Большая кнопка добавления фото */}
+      {/* кнопка добавления фото */}
       <TouchableOpacity
         style={styles.addPhotoBtn}
         onPress={pickImage}
@@ -152,7 +159,7 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
 
-  // Верхняя карточка
+  // верхняя карточка
   topCard: {
     backgroundColor: "rgba(0, 122, 255, 0.1)",
     borderRadius: 16,
@@ -184,7 +191,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  // Координаты
+  // координаты
   coordsCard: {
     backgroundColor: "rgba(0, 122, 255, 0.1)",
     borderRadius: 12,
@@ -202,7 +209,7 @@ const styles = StyleSheet.create({
     color: "rgba(17,24,39,0.6)",
   },
 
-  // Кнопка "Добавить фото"
+  // кнопка "Добавить фото"
   addPhotoBtn: {
     backgroundColor: "#007AFF",
     borderRadius: 100,
@@ -224,7 +231,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  // Пустое состояние
+  // пустое состояние
   emptyCard: {
     backgroundColor: "rgba(0, 122, 255, 0.1)",
     borderRadius: 16,
@@ -243,7 +250,7 @@ const styles = StyleSheet.create({
     color: "rgba(17,24,39,0.6)",
   },
 
-  // Сетка фото
+  // сетка фото
   gridRow: {
     justifyContent: "flex-start",
   },
@@ -279,7 +286,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 
-  // Not found
+  // не найдено 
   center: {
     flex: 1,
     alignItems: "center",
