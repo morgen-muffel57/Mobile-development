@@ -11,6 +11,7 @@ type Props = {
 };
 
 export default function Map({ markers, initialRegion, onAddMarker }: Props) {
+  // обработчик долгого нажатия на карту
   const handleLongPress = (event: any) => {
     const { latitude, longitude } = event.nativeEvent.coordinate;
     onAddMarker(latitude, longitude);

@@ -1,18 +1,17 @@
-// database/operations.ts
 import * as SQLite from "expo-sqlite";
 import { DBMarker, DBMarkerImage } from "../types";
 
-/**
- * Получить все маркеры
- */
+// получаем список маркеров
+// используем Promise, т.к. запрос ассинхронный (выполняется без блокировки остального кода)
 export const getMarkers = async (
-  db: SQLite.SQLiteDatabase
+  // db - подключение к базе
+  db: SQLite.SQLiteDatabase,
 ): Promise<DBMarker[]> => {
   try {
     const rows = await db.getAllAsync<DBMarker>(
       `SELECT id, latitude, longitude, created_at
        FROM markers
-       ORDER BY created_at DESC;`
+       ORDER BY created_at DESC;`,
     );
     return rows;
   } catch (error) {
@@ -21,18 +20,17 @@ export const getMarkers = async (
   }
 };
 
-/**
- * Добавить маркер. Возвращает id нового маркера.
- */
+// добавляем маркер. возвращает id нового маркера
 export const addMarker = async (
   db: SQLite.SQLiteDatabase,
   latitude: number,
-  longitude: number
+  longitude: number,
+  // возвращаем Promise<number>, т.к. хотим вернуть id созданного маркера
 ): Promise<number> => {
   try {
     const result = await db.runAsync(
       `INSERT INTO markers (latitude, longitude) VALUES (?, ?);`,
-      [latitude, longitude]
+      [latitude, longitude],
     );
 
     // result.lastInsertRowId — id созданной строки
@@ -43,12 +41,10 @@ export const addMarker = async (
   }
 };
 
-/**
- * Удалить маркер (и связанные фото удалятся каскадом при включенных FK)
- */
+// удаляем маркер (и связанные фото удалятся каскадом при включенных FK)
 export const deleteMarker = async (
   db: SQLite.SQLiteDatabase,
-  id: number
+  id: number,
 ): Promise<void> => {
   try {
     await db.runAsync(`DELETE FROM markers WHERE id = ?;`, [id]);
@@ -58,12 +54,10 @@ export const deleteMarker = async (
   }
 };
 
-/**
- * Получить все изображения для конкретного маркера
- */
+// получаем все изображения для конкретного маркера
 export const getMarkerImages = async (
   db: SQLite.SQLiteDatabase,
-  markerId: number
+  markerId: number,
 ): Promise<DBMarkerImage[]> => {
   try {
     const rows = await db.getAllAsync<DBMarkerImage>(
@@ -71,7 +65,7 @@ export const getMarkerImages = async (
        FROM marker_images
        WHERE marker_id = ?
        ORDER BY created_at DESC;`,
-      [markerId]
+      [markerId],
     );
     return rows;
   } catch (error) {
@@ -80,18 +74,16 @@ export const getMarkerImages = async (
   }
 };
 
-/**
- * Добавить изображение к маркеру
- */
+// добавляем изображение к маркеру
 export const addImage = async (
   db: SQLite.SQLiteDatabase,
   markerId: number,
-  uri: string
+  uri: string, // uri — путь к файлу изображения на устройстве (Expo ImagePicker отдаёт uri)
 ): Promise<void> => {
   try {
     await db.runAsync(
       `INSERT INTO marker_images (marker_id, uri) VALUES (?, ?);`,
-      [markerId, uri]
+      [markerId, uri],
     );
   } catch (error) {
     console.error("Ошибка добавления изображения:", error);
@@ -99,12 +91,10 @@ export const addImage = async (
   }
 };
 
-/**
- * Удалить изображение по id
- */
+// удаляем изображение по id
 export const deleteImage = async (
   db: SQLite.SQLiteDatabase,
-  id: number
+  id: number, // id записи в marker_images
 ): Promise<void> => {
   try {
     await db.runAsync(`DELETE FROM marker_images WHERE id = ?;`, [id]);
@@ -114,16 +104,18 @@ export const deleteImage = async (
   }
 };
 
+// получаем маркер по id (одна метка)
 export const getMarkerById = async (
   db: SQLite.SQLiteDatabase,
-  id: number
+  id: number,
 ): Promise<DBMarker | null> => {
   try {
+    // getFirstAsync<T> делает SELECT и возвращает ПЕРВУЮ строку результата
     const row = await db.getFirstAsync<DBMarker>(
       `SELECT id, latitude, longitude, created_at
        FROM markers
        WHERE id = ?;`,
-      [id]
+      [id],
     );
     return row ?? null;
   } catch (error) {

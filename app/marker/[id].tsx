@@ -14,21 +14,32 @@ import { useDatabase } from "../../context/DatabaseContext";
 import { DBMarker, DBMarkerImage } from "../../types";
 
 export default function MarkerDetailsScreen() {
+  // получаем id с помощью useLocalSearchParams - хук для чтения параметров из URL
   const params = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
-
-  const { getMarkerImages, addImage, deleteImage, deleteMarker, getMarkerById, isLoading } =
-    useDatabase();
+  // берём данные из контекста
+  const {
+    getMarkerImages,
+    addImage,
+    deleteImage,
+    deleteMarker,
+    getMarkerById,
+    isLoading,
+  } = useDatabase();
 
   const markerId = Number(params.id);
-  const [marker, setMarker] = React.useState<DBMarker | null>(null);
-  const [images, setImages] = React.useState<DBMarkerImage[]>([]);
+  const [marker, setMarker] = React.useState<DBMarker | null>(null); // состояние для данных маркера (координаты)
+  const [images, setImages] = React.useState<DBMarkerImage[]>([]); // массив изображений (фотографий) этой метки
   const [busy, setBusy] = React.useState(false);
 
+  // функция загрузки фото из базы
+  // useCallback нужен, чтобы функция не пересоздавалась без нужды
   const loadImages = React.useCallback(async () => {
+    // если markerId некорректный (NaN/Infinity), то ничего не делаем
     if (!Number.isFinite(markerId)) return;
 
     try {
+      // запрашиваем из БД все фото для этой метки, сохраняем фото в state
       const data = await getMarkerImages(markerId);
       setImages(data);
     } catch (e) {
@@ -36,24 +47,28 @@ export default function MarkerDetailsScreen() {
     }
   }, [getMarkerImages, markerId]);
 
+  // функция загрузки самого маркера по id
   const loadMarker = React.useCallback(async () => {
-  try {
-    const m = await getMarkerById(markerId);
-    setMarker(m);
-  } catch {
-    Alert.alert("Ошибка", "Не удалось загрузить координаты метки.");
-  }
-}, [getMarkerById, markerId]);
+    try {
+      // получаем маркер из БД, сохраняем в state
+      const m = await getMarkerById(markerId);
+      setMarker(m);
+    } catch {
+      Alert.alert("Ошибка", "Не удалось загрузить координаты метки.");
+    }
+  }, [getMarkerById, markerId]);
 
-React.useEffect(() => {
-  loadMarker();
-}, [loadMarker]);
+  // загрузка маркера при открытии экрана
+  React.useEffect(() => {
+    loadMarker();
+  }, [loadMarker]);
 
-
+  // загрузка изображений при открытии экрана
   React.useEffect(() => {
     loadImages();
   }, [loadImages]);
 
+  // выбираем фото из галереи
   const pickImage = async () => {
     if (busy) return;
     if (!Number.isFinite(markerId)) {
@@ -63,15 +78,17 @@ React.useEffect(() => {
 
     setBusy(true);
     try {
+      // запрашиваем разрешение на доступ к галерее
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         Alert.alert(
           "Нет доступа к фото",
-          "Разрешите доступ к галерее в настройках, чтобы добавлять фото."
+          "Разрешите доступ к галерее в настройках, чтобы добавлять фото.",
         );
         return;
       }
 
+      // открываем галерею
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -84,6 +101,7 @@ React.useEffect(() => {
         return;
       }
 
+      // если пользователь не отменил выбор (result.canceled = false)
       if (!result.canceled) {
         await addImage(markerId, uri);
         await loadImages();
@@ -96,7 +114,9 @@ React.useEffect(() => {
     }
   };
 
+  // удаление метки целиком
   const handleDeleteMarker = () => {
+    // если markerId некорректный — ничего не делаем
     if (!Number.isFinite(markerId)) return;
 
     Alert.alert("Удаление", "Удалить эту метку и все её фото?", [
@@ -116,6 +136,7 @@ React.useEffect(() => {
     ]);
   };
 
+  // удаление одного фото по его id (id из таблицы marker_images)
   const handleDeletePhoto = (imageId: number) => {
     Alert.alert("Удалить фото?", "Это действие нельзя отменить.", [
       { text: "Отмена", style: "cancel" },
@@ -177,7 +198,6 @@ React.useEffect(() => {
           <Text style={styles.coordsLabel}>Координаты</Text>
           <Text style={styles.coordsValue}>{marker?.latitude.toFixed(7)}</Text>
           <Text style={styles.coordsValue}>{marker?.longitude.toFixed(7)}</Text>
-
         </View>
       </View>
 

@@ -6,17 +6,18 @@ import Map from "../components/Map";
 import { useDatabase } from "../context/DatabaseContext";
 import { DBMarker } from "../types";
 
-
 export default function MapScreen() {
   const { getMarkers, addMarker, isLoading, error } = useDatabase();
   const [markers, setMarkers] = React.useState<DBMarker[]>([]);
   const [refreshing, setRefreshing] = React.useState(false);
-  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+  // функция загрузки маркеров из базы в состояние markers
+  // useCallback нужен, чтобы функция не создавалась заново при каждом ререндере
   const loadMarkers = React.useCallback(async () => {
     if (isLoading) return;
     setRefreshing(true);
     try {
+      // пытаемся получить данные из базы (SELECT), сохраняем их в state
       const data = await getMarkers();
       setMarkers(data);
     } catch (e) {
@@ -24,25 +25,28 @@ export default function MapScreen() {
     } finally {
       setRefreshing(false);
     }
-  }, [getMarkers, isLoading]);
+  }, [getMarkers, isLoading]); // если getMarkers или isLoading изменятся loadMarkers пересоздастся
 
+  // срабатывает каждый раз, когда экран карты снова становится активным
   useFocusEffect(
-  React.useCallback(() => {
-    if (!isLoading && !error) {
-      loadMarkers();
-    }
-  }, [isLoading, error, loadMarkers])
-);
-  
-  // грузим маркеры при открытии экрана
+    React.useCallback(() => {
+      if (!isLoading && !error) {
+        loadMarkers();
+      }
+    }, [isLoading, error, loadMarkers]),
+  );
+
+  // срабатывает при первом открытии экрана (и при изменении loadMarkers)
   React.useEffect(() => {
     loadMarkers();
   }, [loadMarkers]);
 
-  // добавление маркера в SQLite
+  // handleAddMarker — функция, которую вызывает Map при долгом нажатии на карту
   const handleAddMarker = async (latitude: number, longitude: number) => {
     try {
+      // добавляем маркер в SQLite
       await addMarker(latitude, longitude);
+      // обновляем список маркеров
       await loadMarkers();
       await loadMarkers();
       Alert.alert("Метка добавлена");
@@ -51,6 +55,7 @@ export default function MapScreen() {
     }
   };
 
+  // если база ещё не инициализирована — показываем экран загрузки
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -59,6 +64,7 @@ export default function MapScreen() {
     );
   }
 
+  // если в контексте есть ошибка базы — показываем экран ошибки
   if (error) {
     return (
       <View style={styles.center}>
@@ -92,12 +98,11 @@ export default function MapScreen() {
           Чтобы поставить метку, нажмите и удерживайте
         </Text>
 
-        {/* маленькая “перезагрузка” без кнопки — просто текстом */}
         {refreshing ? (
           <Text style={styles.smallText}>Обновление…</Text>
         ) : (
           <Text style={styles.smallLink} onPress={loadMarkers}>
-            Обновить список
+            Обновить карту
           </Text>
         )}
       </BlurView>

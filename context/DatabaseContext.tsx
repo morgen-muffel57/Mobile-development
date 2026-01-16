@@ -1,5 +1,11 @@
 import * as SQLite from "expo-sqlite";
-import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   addImage as opAddImage,
   addMarker as opAddMarker,
@@ -13,16 +19,20 @@ import { initDatabase } from "../database/schema";
 import { DatabaseContextType } from "../types";
 
 // создаём контекст
-const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
+const DatabaseContext = createContext<DatabaseContextType | undefined>(
+  undefined,
+);
 
-export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [db, setDb] = useState<SQLite.SQLiteDatabase | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [db, setDb] = useState<SQLite.SQLiteDatabase | null>(null); // состояние, где хранится подключение к SQLite
+  const [isLoading, setIsLoading] = useState(true); // флаг загрузки/инициализации базы
+  const [error, setError] = useState<Error | null>(null); // хранит последнюю ошибку базы (если она возникла)
 
   // инициализация базы при запуске приложения
   useEffect(() => {
-    let isMounted = true;
+    let isMounted = true; // isMounted — флаг "компонент ещё смонтирован"
 
     // создаём функцию boot, которая будет запускать инициализацию
     const boot = async () => {
@@ -49,11 +59,12 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
   }, []); // useEffect выполняем только при первом запуске компонента
 
-  // методы, которые используют operations.ts 
+  // методы, которые используют operations.ts
   // функция для добавления маркера в базу данных
   const addMarker = async (latitude: number, longitude: number) => {
     if (!db) throw new Error("DB is not ready");
     try {
+      // вызываем SQL-операцию вставки маркера
       return await opAddMarker(db, latitude, longitude);
     } catch (e: any) {
       const err = e instanceof Error ? e : new Error(String(e));
@@ -62,7 +73,7 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   };
 
-  // функция для удаления маркера из базы данных 
+  // функция для удаления маркера из базы данных
   const deleteMarker = async (id: number) => {
     if (!db) throw new Error("DB is not ready");
     try {
@@ -124,17 +135,19 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // функция для получения маркера по его id
   const getMarkerById = async (id: number) => {
-  if (!db) throw new Error("DB is not ready");
-  try {
-    return await opGetMarkerById(db, id);
-  } catch (e: any) {
-    const err = e instanceof Error ? e : new Error(String(e));
-    setError(err);
-    throw err;
-  }
-};
+    if (!db) throw new Error("DB is not ready");
+    try {
+      return await opGetMarkerById(db, id);
+    } catch (e: any) {
+      const err = e instanceof Error ? e : new Error(String(e));
+      setError(err);
+      throw err;
+    }
+  };
 
+  // это объект, который будет доступен во всех компонентах через useDatabase()
   // собираем все функции и состояния базы данных в один объект, передаёт его через контекст всему приложению
+  // useMemo нужен, чтобы этот объект НЕ создавался заново при каждом рендере
   const value = useMemo<DatabaseContextType>(
     () => ({
       addMarker,
@@ -147,14 +160,19 @@ export const DatabaseProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       isLoading,
       error,
     }),
-    [db, isLoading, error]
+    [db, isLoading, error],
   );
 
-  return <DatabaseContext.Provider value={value}>{children}</DatabaseContext.Provider>;
+  return (
+    <DatabaseContext.Provider value={value}>
+      {children}
+    </DatabaseContext.Provider>
+  );
 };
 
 export const useDatabase = () => {
   const ctx = useContext(DatabaseContext);
-  if (!ctx) throw new Error("useDatabase must be used within a DatabaseProvider");
+  if (!ctx)
+    throw new Error("useDatabase must be used within a DatabaseProvider");
   return ctx;
 };

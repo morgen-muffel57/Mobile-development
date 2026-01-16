@@ -5,13 +5,14 @@ const DB_NAME = "markers.db";
 // инициализация базы данных
 export const initDatabase = async (): Promise<SQLite.SQLiteDatabase> => {
   try {
-    
-    // открываем файл markers.db, если нет, созда м новый
+    // открываем файл markers.db, если нет, создаём новый
     const db = await SQLite.openDatabaseAsync(DB_NAME);
 
-    // включаем foreign keys, иначе ON DELETE CASCADE может не работать
+    // foreign_keys = ON включает поддержку внешних ключей (FOREIGN KEY)
+    // иначе ON DELETE CASCADE может не работать
     await db.execAsync("PRAGMA foreign_keys = ON;");
 
+    // execAsync выполняет SQL-скрипт
     // создаём таблицы markers и marker_images
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS markers (
