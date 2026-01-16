@@ -10,27 +10,59 @@ import {
   View,
 } from "react-native";
 import ImageList from "../../components/ImageList";
-import { useMarkers } from "../../context/MarkerContext";
-import { ImageData } from "../../types";
+import { useDatabase } from "../../context/DatabaseContext";
+import { DBMarker, DBMarkerImage } from "../../types";
 
 export default function MarkerDetailsScreen() {
-  // получаем id с помощью useLocalSearchParams - хук для чтения параметров из URL
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
-  // берём данные из контекста
-  const { markers, deleteMarker, addPhotoToMarker, deletePhotoFromMarker } =
-    useMarkers();
 
-  const marker = markers.find((m) => m.id === id);
+  const { getMarkerImages, addImage, deleteImage, deleteMarker, getMarkerById, isLoading } =
+    useDatabase();
 
+  const markerId = Number(params.id);
+  const [marker, setMarker] = React.useState<DBMarker | null>(null);
+  const [images, setImages] = React.useState<DBMarkerImage[]>([]);
   const [busy, setBusy] = React.useState(false);
 
-  // функция выбора изображения pickImage
+  const loadImages = React.useCallback(async () => {
+    if (!Number.isFinite(markerId)) return;
+
+    try {
+      const data = await getMarkerImages(markerId);
+      setImages(data);
+    } catch (e) {
+      Alert.alert("Ошибка", "Не удалось загрузить фотографии.");
+    }
+  }, [getMarkerImages, markerId]);
+
+  const loadMarker = React.useCallback(async () => {
+  try {
+    const m = await getMarkerById(markerId);
+    setMarker(m);
+  } catch {
+    Alert.alert("Ошибка", "Не удалось загрузить координаты метки.");
+  }
+}, [getMarkerById, markerId]);
+
+React.useEffect(() => {
+  loadMarker();
+}, [loadMarker]);
+
+
+  React.useEffect(() => {
+    loadImages();
+  }, [loadImages]);
+
   const pickImage = async () => {
     if (busy) return;
+    if (!Number.isFinite(markerId)) {
+      Alert.alert("Ошибка", "Некорректный id метки.");
+      return;
+    }
+
     setBusy(true);
     try {
-      // разрешение на доступ к галерее
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
         Alert.alert(
@@ -40,26 +72,21 @@ export default function MarkerDetailsScreen() {
         return;
       }
 
-      // открытие галереи
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         quality: 0.6,
       });
 
-      // проверяем, что uri реально есть
       const uri = result.assets?.[0]?.uri;
       if (!uri) {
         Alert.alert("Ошибка", "Не удалось получить изображение.");
         return;
       }
-      // если всё хорошо, создаём фото
-      if (!result.canceled && marker) {
-        const newPhoto: ImageData = {
-          id: Date.now().toString(),
-          uri: result.assets[0].uri,
-        };
-        addPhotoToMarker(marker.id, newPhoto);
+
+      if (!result.canceled) {
+        await addImage(markerId, uri);
+        await loadImages();
         Alert.alert("Фото добавлено");
       }
     } catch (e) {
@@ -69,38 +96,48 @@ export default function MarkerDetailsScreen() {
     }
   };
 
-  // функция удаления маркера
   const handleDeleteMarker = () => {
+    if (!Number.isFinite(markerId)) return;
+
     Alert.alert("Удаление", "Удалить эту метку и все её фото?", [
       { text: "Отмена", style: "cancel" },
       {
         text: "Удалить",
         style: "destructive",
-        onPress: () => {
-          deleteMarker(id);
-          router.back();
+        onPress: async () => {
+          try {
+            await deleteMarker(markerId);
+            router.back();
+          } catch (e) {
+            Alert.alert("Ошибка", "Не удалось удалить метку.");
+          }
         },
       },
     ]);
   };
 
-  // функция удаления фото в маркере
-  const handleDeletePhoto = (photoId: string) => {
-    if (!marker) return;
+  const handleDeletePhoto = (imageId: number) => {
     Alert.alert("Удалить фото?", "Это действие нельзя отменить.", [
       { text: "Отмена", style: "cancel" },
       {
         text: "Удалить",
         style: "destructive",
-        onPress: () => deletePhotoFromMarker(marker.id, photoId),
+        onPress: async () => {
+          try {
+            await deleteImage(imageId);
+            await loadImages();
+          } catch (e) {
+            Alert.alert("Ошибка", "Не удалось удалить фото.");
+          }
+        },
       },
     ]);
   };
 
-  if (!marker) {
+  if (!Number.isFinite(markerId)) {
     return (
       <View style={styles.center}>
-        <Text style={styles.notFoundTitle}>Маркер не найден</Text>
+        <Text style={styles.notFoundTitle}>Некорректный id метки</Text>
         <TouchableOpacity
           style={styles.primaryBtn}
           onPress={() => router.back()}
@@ -111,15 +148,22 @@ export default function MarkerDetailsScreen() {
     );
   }
 
+  if (isLoading) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ fontWeight: "700" }}>Загрузка…</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
     >
-      {/* верхняя основная карточка */}
       <View style={styles.topCard}>
         <View style={styles.topRow}>
-          <Text style={styles.markerTitle}>{marker.title}</Text>
+          <Text style={styles.markerTitle}>Метка #{markerId}</Text>
 
           <TouchableOpacity
             style={styles.deleteMarkerBtn}
@@ -129,26 +173,27 @@ export default function MarkerDetailsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* карточка координат */}
         <View style={styles.coordsCard}>
           <Text style={styles.coordsLabel}>Координаты</Text>
-          <Text style={styles.coordsValue}>{marker.latitude.toFixed(7)}</Text>
-          <Text style={styles.coordsValue}>{marker.longitude.toFixed(7)}</Text>
+          <Text style={styles.coordsValue}>{marker?.latitude.toFixed(7)}</Text>
+          <Text style={styles.coordsValue}>{marker?.longitude.toFixed(7)}</Text>
+
         </View>
       </View>
 
-      {/* кнопка добавления фото */}
       <TouchableOpacity
         style={styles.addPhotoBtn}
         onPress={pickImage}
         disabled={busy}
       >
-        <Text style={styles.addPhotoBtnText}>Добавить фото</Text>
+        <Text style={styles.addPhotoBtnText}>
+          {busy ? "Добавление…" : "Добавить фото"}
+        </Text>
       </TouchableOpacity>
 
       <Text style={styles.sectionTitle}>Фотографии</Text>
 
-      <ImageList images={marker.images} onDelete={handleDeletePhoto} />
+      <ImageList images={images} onDelete={handleDeletePhoto} />
     </ScrollView>
   );
 }
@@ -159,7 +204,6 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
 
-  // верхняя карточка
   topCard: {
     backgroundColor: "rgba(0, 122, 255, 0.1)",
     borderRadius: 16,
@@ -191,7 +235,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  // координаты
   coordsCard: {
     backgroundColor: "rgba(0, 122, 255, 0.1)",
     borderRadius: 12,
@@ -209,7 +252,6 @@ const styles = StyleSheet.create({
     color: "rgba(17,24,39,0.6)",
   },
 
-  // кнопка "Добавить фото"
   addPhotoBtn: {
     backgroundColor: "#007AFF",
     borderRadius: 100,
@@ -231,62 +273,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  // пустое состояние
-  emptyCard: {
-    backgroundColor: "rgba(0, 122, 255, 0.1)",
-    borderRadius: 16,
-    paddingVertical: 60,
-    alignItems: "center",
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "500",
-    color: "#111827",
-    marginBottom: 10,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: "400",
-    color: "rgba(17,24,39,0.6)",
-  },
-
-  // сетка фото
-  gridRow: {
-    justifyContent: "flex-start",
-  },
-  photoItem: {
-    width: "32%",
-    aspectRatio: 1,
-    borderRadius: 12,
-    overflow: "hidden",
-    position: "relative",
-    marginBottom: 8,
-    marginRight: 8,
-    backgroundColor: "rgba(0,0,0,0.05)",
-  },
-  photo: {
-    width: "100%",
-    height: "100%",
-  },
-  deleteBadge: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#EB7273",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  deleteBadgeText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "900",
-    lineHeight: 18,
-  },
-
-  // не найдено 
   center: {
     flex: 1,
     alignItems: "center",

@@ -1,11 +1,11 @@
 import { Stack } from "expo-router";
-import { MarkerProvider } from "../context/MarkerContext";
+import { DatabaseProvider } from "../context/DatabaseContext";
 
 export default function RootLayout() {
   return (
     // объявляем экраны для стековой навигации
-    // оборачиваем всё в провайдер, чтобы у любого экрана был доступ к контексту (а именно функции useMarkers())
-    <MarkerProvider>
+    // оборачиваем всё в провайдер, чтобы у любого экрана был доступ к контексту (а именно функции useDatabase())
+    <DatabaseProvider>
       <Stack>
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen
@@ -16,6 +16,6 @@ export default function RootLayout() {
           }}
         />
       </Stack>
-    </MarkerProvider>
+    </DatabaseProvider>
   );
 }

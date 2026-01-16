@@ -1,19 +1,23 @@
 import { MaterialIcons } from "@expo/vector-icons";
 import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { ImageData } from "../types";
+import { DBMarkerImage } from "../types";
 
-// описываем входные данные компонента ImageList
 type Props = {
-  images: ImageData[];
-  onDelete: (photoId: string) => void;
+  images: DBMarkerImage[];
+  onDelete: (imageId: number) => void;
 };
 
 export default function ImageList({ images, onDelete }: Props) {
   if (images.length === 0) {
     return (
       <View style={styles.emptyCard}>
-        <MaterialIcons name="photo" size={48} color="#79A8FF" style={{ marginBottom: 16 }} />
+        <MaterialIcons
+          name="photo"
+          size={48}
+          color="#79A8FF"
+          style={{ marginBottom: 16 }}
+        />
         <Text style={styles.emptyTitle}>Фото ещё нет</Text>
         <Text style={styles.emptyText}>Добавьте фото к метке</Text>
       </View>

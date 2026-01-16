@@ -1,32 +1,75 @@
 import { BlurView } from "expo-blur";
+import { useFocusEffect } from "expo-router";
 import React from "react";
 import { Alert, StyleSheet, Text, View } from "react-native";
 import Map from "../components/Map";
-import { useMarkers } from "../context/MarkerContext";
-import { MarkerData } from "../types";
+import { useDatabase } from "../context/DatabaseContext";
+import { DBMarker } from "../types";
+
 
 export default function MapScreen() {
-  // получаем данные из контекста с помощью хука useMarkers
-  const { markers, addMarker } = useMarkers();
+  const { getMarkers, addMarker, isLoading, error } = useDatabase();
+  const [markers, setMarkers] = React.useState<DBMarker[]>([]);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  // функция добавления маркера
-  const handleAddMarker = (latitude: number, longitude: number) => {
-    const nextNumber = markers.length + 1;
+  const loadMarkers = React.useCallback(async () => {
+    if (isLoading) return;
+    setRefreshing(true);
+    try {
+      const data = await getMarkers();
+      setMarkers(data);
+    } catch (e) {
+      Alert.alert("Ошибка", "Не удалось загрузить маркеры из базы данных.");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [getMarkers, isLoading]);
 
-    // создаём объект новго маркера
-    const newMarker: MarkerData = {
-      id: Date.now().toString(),
-      latitude,
-      longitude,
-      title: `Метка ${nextNumber}`,
-      description: `Описание метки ${nextNumber}`,
-      images: [],
-    };
+  useFocusEffect(
+  React.useCallback(() => {
+    if (!isLoading && !error) {
+      loadMarkers();
+    }
+  }, [isLoading, error, loadMarkers])
+);
+  
+  // грузим маркеры при открытии экрана
+  React.useEffect(() => {
+    loadMarkers();
+  }, [loadMarkers]);
 
-    // добавляем маркер в контекст
-    addMarker(newMarker);
-    Alert.alert("Метка добавлена");
+  // добавление маркера в SQLite
+  const handleAddMarker = async (latitude: number, longitude: number) => {
+    try {
+      await addMarker(latitude, longitude);
+      await loadMarkers();
+      await loadMarkers();
+      Alert.alert("Метка добавлена");
+    } catch (e) {
+      Alert.alert("Ошибка", "Не удалось добавить метку в базу данных.");
+    }
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.loadingText}>Загрузка базы данных…</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorTitle}>Ошибка базы данных</Text>
+        <Text style={styles.errorText}>{error.message}</Text>
+        <Text style={styles.retryText} onPress={loadMarkers}>
+          Нажмите, чтобы повторить
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -48,6 +91,15 @@ export default function MapScreen() {
         <Text style={styles.hintText}>
           Чтобы поставить метку, нажмите и удерживайте
         </Text>
+
+        {/* маленькая “перезагрузка” без кнопки — просто текстом */}
+        {refreshing ? (
+          <Text style={styles.smallText}>Обновление…</Text>
+        ) : (
+          <Text style={styles.smallLink} onPress={loadMarkers}>
+            Обновить список
+          </Text>
+        )}
       </BlurView>
     </View>
   );
@@ -85,5 +137,35 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 14,
     textAlign: "center",
+  },
+
+  smallText: {
+    marginTop: 10,
+    color: "white",
+    opacity: 0.9,
+    fontSize: 12,
+  },
+  smallLink: {
+    marginTop: 10,
+    color: "white",
+    textDecorationLine: "underline",
+    fontSize: 12,
+  },
+
+  center: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+  },
+  loadingText: { fontSize: 16, fontWeight: "600" },
+  errorTitle: { fontSize: 18, fontWeight: "800", marginBottom: 8 },
+  errorText: { fontSize: 14, opacity: 0.8, textAlign: "center" },
+  retryText: {
+    marginTop: 12,
+    fontSize: 14,
+    textDecorationLine: "underline",
+    color: "#2F6FED",
+    fontWeight: "700",
   },
 });
