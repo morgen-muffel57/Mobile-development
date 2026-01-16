@@ -56,8 +56,8 @@ export const MarkerProvider: React.FC<{ children: React.ReactNode }> = ({
   const addPhotoToMarker = (markerId: string, photo: any) => {
     setMarkers((prev) =>
       prev.map((m) =>
-        m.id === markerId ? { ...m, images: [...m.images, photo] } : m
-      )
+        m.id === markerId ? { ...m, images: [...m.images, photo] } : m,
+      ),
     );
   };
 
@@ -67,13 +67,14 @@ export const MarkerProvider: React.FC<{ children: React.ReactNode }> = ({
       prev.map((m) =>
         m.id === markerId
           ? { ...m, images: m.images.filter((img) => img.id !== photoId) }
-          : m
-      )
+          : m,
+      ),
     );
   };
 
   return (
     <MarkerContext.Provider
+      // данные, доступные всем дочерним компонентам
       value={{
         markers,
         addMarker,
